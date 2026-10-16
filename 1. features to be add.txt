@@ -1,0 +1,10 @@
+1. when there is alert it will vibrate or siren 
+2. automatically refresh the webpage where there is update
+3. AI Disaster Assistant(use gemini or any free ai)
+4. separate fields for flood_risk, landslide_risk, storm_surge_risk, earthquake_risk, and overall_risk
+5. in the list of barangay risk level, when someone click the correspoint coordinate of each barangay it will open an google map by using the coordinate given
+6. fix the report generation there is an error
+7. Map view location must be hinunangan
+
+
+all done

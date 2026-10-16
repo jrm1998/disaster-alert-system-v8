@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - MDAS</title>
+  <meta name="theme-color" content="#0b1c33">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site">
+    <div class="container header-flex">
+      <a class="logo" href="/" style="color:var(--text)">
+        <img src="/icons/icon-192.png" alt="MDAS logo" data-brand-logo>
+        <div>MDAS Dashboard</div>
+      </a>
+      <div class="header-flex" style="gap:10px;align-items:center">
+        <div id="gps-toggle"></div>
+        <nav class="header-nav" data-auth-area></nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="tabs" id="tabs"></div>
+
+    <!-- ============ OVERVIEW ============ -->
+    <section class="tab-panel" id="panel-overview" data-roles="admin,barangay_official,responder">
+      <div class="grid cols-4" id="stat-cards"></div>
+      <div class="grid cols-2 mt">
+        <div class="card">
+          <h2>Alerts Pending Approval</h2>
+          <div id="pending-alerts"><p class="empty">None.</p></div>
+        </div>
+        <div class="card">
+          <h2>Recent Incidents</h2>
+          <div id="recent-incidents" class="table-wrap"><p class="empty">None.</p></div>
+        </div>
+      </div>
+      <div class="grid cols-2 mt">
+        <div class="card">
+          <h2>Rescue Teams</h2>
+          <div id="overview-teams" class="table-wrap"></div>
+        </div>
+        <div class="card">
+          <h2>Resources Below Minimum</h2>
+          <div id="low-resources"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ALERTS ============ -->
+    <section class="tab-panel" id="panel-alerts" data-roles="admin,barangay_official">
+      <div class="card">
+        <h2>Emergency Alerts Management</h2>
+        <div class="section-actions">
+          <button class="btn" onclick="openModal('alert-create-modal')">+ New Alert</button>
+          <button class="btn secondary" onclick="openModal('pdf-import-modal')">AI PDF Import</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Title</th><th>Severity</th><th>Target</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="alerts-manage-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ INCIDENTS ============ -->
+    <section class="tab-panel" id="panel-incidents" data-roles="admin,barangay_official,responder">
+      <div class="card">
+        <h2>Incident Tracking <span class="sub">Reported &rarr; Verified &rarr; Responding &rarr; Resolved</span></h2>
+        <div class="section-actions">
+          <select id="inc-filter-status" style="max-width:200px" onchange="loadIncidentsAdmin()">
+            <option value="">All statuses</option>
+            <option value="reported">Reported</option>
+            <option value="verified">Verified</option>
+            <option value="responding">Responding</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Description</th><th>Barangay</th><th>Status</th><th>Reported</th><th>Actions</th></tr></thead>
+            <tbody id="incidents-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MY REPORTS (residents) ============ -->
+    <section class="tab-panel" id="panel-myreports" data-roles="resident,responder,barangay_official,admin">
+      <div class="card">
+        <h2>My Incident Reports <span class="sub">track their progress</span></h2>
+        <div id="my-reports"></div>
+      </div>
+    </section>
+
+    <!-- ============ EVACUATION ============ -->
+    <section class="tab-panel" id="panel-evac" data-roles="admin,barangay_official,responder">
+      <div class="card">
+        <h2>Evacuation Center Management</h2>
+        <div class="section-actions">
+          <button class="btn" data-roles-inline="admin,barangay_official" onclick="openModal('evac-create-modal')">+ Add Center</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Center</th><th>Barangay</th><th>Status</th><th>Occupancy</th><th>Contact</th><th>Actions</th></tr></thead>
+            <tbody id="evac-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TEAMS ============ -->
+    <section class="tab-panel" id="panel-teams" data-roles="admin,barangay_official,responder">
+      <div class="card">
+        <h2>Rescue Team Management</h2>
+        <div class="section-actions">
+          <button class="btn" data-roles-inline="admin" onclick="openModal('team-create-modal')">+ Add Team</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Team</th><th>Leader</th><th>Members</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="teams-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FLOOD ============ -->
+    <section class="tab-panel" id="panel-flood" data-roles="admin,barangay_official,responder">
+      <div class="card">
+        <h2>Flood Monitoring <span class="sub">automatic warnings trigger at alert / critical levels</span></h2>
+        <div class="section-actions">
+          <button class="btn" data-roles-inline="admin" onclick="openModal('sensor-create-modal')">+ Add Sensor</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Sensor</th><th>Barangay</th><th>Latest</th><th>Alert / Critical</th><th>Recorded</th><th>Actions</th></tr></thead>
+            <tbody id="flood-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RESOURCES ============ -->
+    <section class="tab-panel" id="panel-resources" data-roles="admin,barangay_official,responder">
+      <div class="card">
+        <h2>Resource Monitoring</h2>
+        <div class="section-actions">
+          <button class="btn" data-roles-inline="admin,barangay_official" onclick="openModal('resource-create-modal')">+ Add Resource</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Resource</th><th>Category</th><th>Stock</th><th>Minimum</th><th>Location</th><th>Adjust</th></tr></thead>
+            <tbody id="resources-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MISSING ============ -->
+    <section class="tab-panel" id="panel-missing" data-roles="admin,barangay_official,responder,resident">
+      <div class="card">
+        <h2>Missing Person Reports</h2>
+        <div class="section-actions">
+          <button class="btn" onclick="openModal('missing-create-modal')">+ Report Missing Person</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Age/Gender</th><th>Last Seen</th><th>Contact</th><th>Status</th><th>Filed</th><th>Actions</th></tr></thead>
+            <tbody id="missing-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BARANGAYS ============ -->
+    <section class="tab-panel" id="panel-barangays" data-roles="admin">
+      <div class="card">
+        <h2>Barangay Risk Levels <span class="sub">per-hazard assessment &bull; overall = highest hazard</span></h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Barangay</th><th>Flood</th><th>Landslide</th><th>Storm Surge</th><th>Earthquake</th><th>Overall</th><th>Population</th><th>Coordinates</th></tr></thead>
+            <tbody id="barangays-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTACTS ============ -->
+    <section class="tab-panel" id="panel-contacts" data-roles="admin">
+      <div class="card">
+        <h2>Emergency Contacts Directory</h2>
+        <div class="section-actions">
+          <button class="btn" onclick="openModal('contact-create-modal')">+ Add Contact</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Category</th><th>Phone</th><th>Address</th><th>Actions</th></tr></thead>
+            <tbody id="contacts-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ROADS ============ -->
+    <section class="tab-panel" id="panel-roads" data-roles="admin,barangay_official,responder">
+      <div class="card">
+        <h2>Road Blockages <span class="sub">shown on the public disaster map</span></h2>
+        <div class="section-actions">
+          <button class="btn" onclick="openModal('road-create-modal')">+ Report Blocked Road</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Road</th><th>Barangay</th><th>Status</th><th>Severity</th><th>Cause</th><th>Updated</th><th>Actions</th></tr></thead>
+            <tbody id="roads-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ OFFICIALS ============ -->
+    <section class="tab-panel" id="panel-officials" data-roles="admin,barangay_official">
+      <div class="card">
+        <h2>Barangay Officials Directory <span class="sub">residents see their own barangay's hotlines</span></h2>
+        <div class="section-actions">
+          <button class="btn" onclick="openModal('official-create-modal')">+ Add Official</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Position</th><th>Barangay</th><th>Hotline</th><th>Active</th><th>Actions</th></tr></thead>
+            <tbody id="officials-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ USERS ============ -->
+    <section class="tab-panel" id="panel-users" data-roles="admin">
+      <div class="card">
+        <h2>User Accounts</h2>
+        <div class="section-actions">
+          <button class="btn" onclick="openModal('user-create-modal')">+ Create User</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Barangay</th><th>Team</th><th>Active</th><th>Actions</th></tr></thead>
+            <tbody id="users-admin-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ REPORTS ============ -->
+    <section class="tab-panel" id="panel-reports" data-roles="admin,barangay_official,responder">
+      <div class="card">
+        <h2>Report Generation <span class="sub">PDF &bull; Excel &bull; CSV</span></h2>
+        <div class="form-row">
+          <div><label>From date</label><input type="date" id="rpt-from"></div>
+          <div><label>To date</label><input type="date" id="rpt-to"></div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>Status filter</label>
+            <select id="rpt-status">
+              <option value="">All</option>
+              <option value="reported">Reported</option>
+              <option value="verified">Verified</option>
+              <option value="responding">Responding</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+          <div><label>Barangay filter</label><select id="rpt-barangay"><option value="">All</option></select></div>
+        </div>
+        <div class="section-actions mt">
+          <button class="btn danger" onclick="downloadReport('pdf')">Download PDF</button>
+          <button class="btn success" onclick="downloadReport('excel')">Download Excel</button>
+          <button class="btn" onclick="downloadReport('csv')">Download CSV</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ LOGS ============ -->
+    <section class="tab-panel" id="panel-logs" data-roles="admin,barangay_official">
+      <div class="card">
+        <h2>System Activity Logs <span class="sub">who created, edited, approved or sent what</span></h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>When</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th><th>IP</th></tr></thead>
+            <tbody id="logs-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ AI ASSISTANT ============ -->
+    <section class="tab-panel" id="panel-ai" data-roles="admin,barangay_official,responder,resident">
+      <div class="card">
+        <h2>AI Disaster Assistant</h2>
+        <div class="chat-box" style="height:460px">
+          <div class="chat-log" id="dash-chat-log">
+            <div class="chat-msg bot">Ask me about preparedness, alerts, evacuation, or system usage.</div>
+          </div>
+          <div class="chat-input">
+            <input type="text" id="dash-chat-input" placeholder="Type a question..." autocomplete="off">
+            <button class="btn" id="dash-chat-send">Ask</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ADVISORIES ============ -->
+    <section class="tab-panel" id="panel-advisories" data-roles="admin,barangay_official,responder">
+      <div class="card">
+        <h2>Official Disaster Advisories <span class="sub">PAGASA &bull; PHIVOLCS &bull; NDRRMC &bull; DENR</span></h2>
+        <div class="section-actions">
+          <select id="adv-filter-agency" style="max-width:200px" onchange="loadAdvisoriesAdmin()">
+            <option value="">All agencies</option>
+            <option value="PAGASA">PAGASA</option>
+            <option value="PHIVOLCS">PHIVOLCS</option>
+            <option value="NDRRMC">NDRRMC</option>
+            <option value="DENR">DENR</option>
+            <option value="LGU">LGU</option>
+            <option value="OTHER">Other</option>
+          </select>
+          <button class="btn secondary" data-roles-inline="admin,barangay_official" onclick="refreshAdvisories()">Refresh Feeds</button>
+          <button class="btn secondary" data-roles-inline="admin,barangay_official" onclick="generateDailyReport()">Generate Daily Report</button>
+          <button class="btn" data-roles-inline="admin,barangay_official" onclick="openModal('advisory-create-modal')">+ Post Advisory</button>
+        </div>
+        <p class="muted">Earthquake advisories (PHIVOLCS / USGS) refresh automatically every 30 minutes. A multi-hazard <b>Daily Situation Report</b> (typhoon signals, earthquakes, rainfall, flood alerts, storm surge) is generated automatically at 6:00 AM. PAGASA, NDRRMC, DENR and LGU bulletins are posted here by officials using "+ Post Advisory".</p>
+        <div id="advisories-admin-list" class="mt"><p class="empty">Loading...</p></div>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="tab-panel" id="panel-settings" data-roles="admin">
+      <div class="card">
+        <h2>System Customization <span class="sub">branding, contacts &amp; map defaults</span></h2>
+        <form id="settings-form">
+          <div class="form-row">
+            <div><label>System name</label><input type="text" id="set-system_name" maxlength="120"></div>
+            <div><label>Short name</label><input type="text" id="set-short_name" maxlength="40"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Municipality</label><input type="text" id="set-municipality_name" maxlength="120"></div>
+            <div><label>Logo URL</label><input type="text" id="set-logo_url" placeholder="/icons/icon-192.png"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Theme color</label><input type="color" id="set-theme_color"></div>
+            <div><label>Emergency hotline</label><input type="text" id="set-hotline" maxlength="40"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Contact email</label><input type="text" id="set-contact_email"></div>
+            <div><label>Contact phone</label><input type="text" id="set-contact_phone"></div>
+          </div>
+          <label>Address</label><input type="text" id="set-address">
+          <div class="form-row">
+            <div><label>Map center latitude</label><input type="number" step="any" id="set-map_center_lat"></div>
+            <div><label>Map center longitude</label><input type="number" step="any" id="set-map_center_lng"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Map zoom</label><input type="number" id="set-map_zoom" min="5" max="18"></div>
+            <div><label>Footer text</label><input type="text" id="set-footer_text"></div>
+          </div>
+          <div class="section-actions mt">
+            <button type="submit" class="btn success">Save Settings</button>
+            <button type="button" class="btn secondary" onclick="loadSettingsAdmin()">Reset</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- =============== MODALS =============== -->
+  <div class="modal-overlay" id="alert-create-modal">
+    <div class="modal">
+      <h3>Create Emergency Alert</h3>
+      <form id="alert-form">
+        <label>Title</label>
+        <input type="text" id="al-title" required maxlength="190">
+        <label>Message</label>
+        <textarea id="al-message" required></textarea>
+        <div class="form-row">
+          <div>
+            <label>Type</label>
+            <select id="al-type">
+              <option value="warning">Warning</option>
+              <option value="advisory">Advisory</option>
+              <option value="evacuation">Evacuation order</option>
+              <option value="all_clear">All clear</option>
+              <option value="information">Information</option>
+            </select>
+          </div>
+          <div>
+            <label>Severity</label>
+            <select id="al-severity">
+              <option value="info">Info</option>
+              <option value="warning">Warning</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+        <label>Target audience</label>
+        <select id="al-target" onchange="onAlertTargetChange()">
+          <option value="all">Entire municipality</option>
+          <option value="barangay">Specific barangays</option>
+          <option value="geofence">Geofenced danger area (radius)</option>
+        </select>
+        <div id="al-barangays-wrap" class="hidden">
+          <label>Select barangays</label>
+          <div class="checkbox-list" id="al-barangays"></div>
+        </div>
+        <div id="al-geofence-wrap" class="hidden">
+          <div class="form-row">
+            <div><label>Center latitude</label><input type="number" step="any" id="al-geo-lat" placeholder="17.5079"></div>
+            <div><label>Center longitude</label><input type="number" step="any" id="al-geo-lng" placeholder="120.7598"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Radius (meters, 100-20000)</label><input type="number" id="al-geo-radius" value="1000" min="100" max="20000"></div>
+            <div><label>&nbsp;</label><button type="button" class="btn secondary" onclick="previewGeofence()">Preview affected barangays</button></div>
+          </div>
+          <p class="muted" id="geofence-preview-result"></p>
+        </div>
+        <label>Expires at (optional)</label>
+        <input type="datetime-local" id="al-expires">
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('alert-create-modal')">Cancel</button>
+          <button type="button" class="btn secondary" onclick="submitAlert(false)">Save Draft</button>
+          <button type="submit" class="btn">Submit for Approval</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="pdf-import-modal">
+    <div class="modal">
+      <h3>AI PDF Import</h3>
+      <p class="muted">Upload an official bulletin or advisory PDF. The AI extracts the title, severity, type and affected barangays, and creates a <b>draft alert</b> that you must review and submit for approval.</p>
+      <form id="pdf-import-form" class="mt">
+        <label>PDF file</label>
+        <input type="file" id="pdf-file" accept="application/pdf,.pdf" required>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('pdf-import-modal')">Cancel</button>
+          <button type="submit" class="btn">Analyze &amp; Create Draft</button>
+        </div>
+      </form>
+      <div id="pdf-import-result" class="mt"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="incident-status-modal">
+    <div class="modal">
+      <h3>Update Incident Status</h3>
+      <div id="inc-status-flow" class="status-flow mt"></div>
+      <form id="incident-status-form" class="mt">
+        <input type="hidden" id="is-id">
+        <label>New status</label>
+        <select id="is-status">
+          <option value="verified">Verified</option>
+          <option value="responding">Responding</option>
+          <option value="resolved">Resolved</option>
+          <option value="reported">Reported (reopen)</option>
+        </select>
+        <div id="is-team-wrap" class="hidden">
+          <label>Dispatch rescue team</label>
+          <select id="is-team"></select>
+        </div>
+        <label>Note</label>
+        <textarea id="is-note" placeholder="Verification details, response actions..."></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('incident-status-modal')">Cancel</button>
+          <button type="submit" class="btn">Update</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="incident-view-modal">
+    <div class="modal">
+      <h3>Incident Details</h3>
+      <div id="incident-detail"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" onclick="closeModal('incident-view-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="evac-edit-modal">
+    <div class="modal">
+      <h3>Update Evacuation Center</h3>
+      <form id="evac-edit-form">
+        <input type="hidden" id="ev-id">
+        <div class="form-row">
+          <div><label>Occupants</label><input type="number" id="ev-occupants" min="0" required></div>
+          <div><label>Capacity</label><input type="number" id="ev-capacity" min="0" required></div>
+        </div>
+        <label>Status</label>
+        <select id="ev-status">
+          <option value="">(auto from occupancy)</option>
+          <option value="standby">Standby</option>
+          <option value="open">Open</option>
+          <option value="full">Full</option>
+          <option value="closed">Closed</option>
+        </select>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('evac-edit-modal')">Cancel</button>
+          <button type="submit" class="btn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="evac-create-modal">
+    <div class="modal">
+      <h3>Add Evacuation Center</h3>
+      <form id="evac-create-form">
+        <label>Name</label><input type="text" id="evc-name" required>
+        <label>Barangay</label><select id="evc-barangay"></select>
+        <label>Address</label><input type="text" id="evc-address">
+        <div class="form-row">
+          <div><label>Latitude</label><input type="number" step="any" id="evc-lat"></div>
+          <div><label>Longitude</label><input type="number" step="any" id="evc-lng"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Capacity</label><input type="number" id="evc-capacity" min="0" value="100"></div>
+          <div><label>Contact phone</label><input type="text" id="evc-phone"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('evac-create-modal')">Cancel</button>
+          <button type="submit" class="btn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="team-create-modal">
+    <div class="modal">
+      <h3>Add Rescue Team</h3>
+      <form id="team-create-form">
+        <label>Team name</label><input type="text" id="tm-name" required>
+        <label>Leader</label><input type="text" id="tm-leader" required>
+        <div class="form-row">
+          <div><label>Members</label><input type="number" id="tm-count" min="1" value="5"></div>
+          <div><label>Phone</label><input type="text" id="tm-phone"></div>
+        </div>
+        <label>Specialty <span class="sub">used for automatic dispatch matching</span></label>
+        <select id="tm-specialty">
+          <option value="">-- none --</option>
+          <option value="rescue">General rescue</option>
+          <option value="fire">Fire</option>
+          <option value="medical">Medical</option>
+          <option value="water">Water / flood</option>
+        </select>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('team-create-modal')">Cancel</button>
+          <button type="submit" class="btn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="advisory-create-modal">
+    <div class="modal">
+      <h3>Post Official Advisory</h3>
+      <form id="advisory-create-form">
+        <div class="form-row">
+          <div>
+            <label>Agency</label>
+            <select id="ad-agency">
+              <option value="PAGASA">PAGASA</option>
+              <option value="PHIVOLCS">PHIVOLCS</option>
+              <option value="NDRRMC">NDRRMC</option>
+              <option value="DENR">DENR</option>
+              <option value="LGU">LGU</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Alert level</label>
+            <select id="ad-level">
+              <option value="info">Info</option>
+              <option value="warning">Warning</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+        <label>Title</label><input type="text" id="ad-title" required maxlength="190">
+        <div class="form-row">
+          <div>
+            <label>Advisory type</label>
+            <select id="ad-type">
+              <option value="weather">Weather</option>
+              <option value="typhoon">Typhoon</option>
+              <option value="flood">Flood</option>
+              <option value="earthquake">Earthquake</option>
+              <option value="volcano">Volcano</option>
+              <option value="landslide">Landslide</option>
+              <option value="storm_surge">Storm surge</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+          <div><label>Issued at</label><input type="datetime-local" id="ad-issued"></div>
+        </div>
+        <label>Affected areas</label><input type="text" id="ad-areas" placeholder="e.g. Hinunangan, Southern Leyte">
+        <label>Details</label><textarea id="ad-details" placeholder="Advisory details..."></textarea>
+        <label>Source URL (optional)</label><input type="text" id="ad-url">
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('advisory-create-modal')">Cancel</button>
+          <button type="submit" class="btn">Post Advisory</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="sensor-create-modal">
+    <div class="modal">
+      <h3>Add Flood Sensor</h3>
+      <form id="sensor-create-form">
+        <label>Sensor name</label><input type="text" id="fs-name" required>
+        <label>Barangay</label><select id="fs-barangay"></select>
+        <div class="form-row">
+          <div><label>Latitude</label><input type="number" step="any" id="fs-lat"></div>
+          <div><label>Longitude</label><input type="number" step="any" id="fs-lng"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Alert level (m)</label><input type="number" step="0.01" id="fs-alert" value="3" required></div>
+          <div><label>Critical level (m)</label><input type="number" step="0.01" id="fs-critical" value="5" required></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('sensor-create-modal')">Cancel</button>
+          <button type="submit" class="btn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="resource-create-modal">
+    <div class="modal">
+      <h3>Add Resource</h3>
+      <form id="resource-create-form">
+        <label>Name</label><input type="text" id="rs-name" required>
+        <div class="form-row">
+          <div>
+            <label>Category</label>
+            <select id="rs-category">
+              <option value="food">Food</option><option value="water">Water</option>
+              <option value="medicine">Medicine</option><option value="equipment">Equipment</option>
+              <option value="bedding">Bedding</option><option value="hygiene">Hygiene</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div><label>Unit</label><input type="text" id="rs-unit" value="pcs"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Quantity</label><input type="number" step="0.01" id="rs-qty" value="0"></div>
+          <div><label>Minimum level</label><input type="number" step="0.01" id="rs-min" value="0"></div>
+        </div>
+        <label>Storage location</label><input type="text" id="rs-location">
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('resource-create-modal')">Cancel</button>
+          <button type="submit" class="btn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="missing-create-modal">
+    <div class="modal">
+      <h3>Report Missing Person</h3>
+      <form id="missing-create-form">
+        <label>Full name</label><input type="text" id="mp-name" required>
+        <div class="form-row">
+          <div><label>Age</label><input type="number" id="mp-age" min="0"></div>
+          <div>
+            <label>Gender</label>
+            <select id="mp-gender">
+              <option value="unknown">Unknown</option><option value="male">Male</option>
+              <option value="female">Female</option><option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <label>Last seen (location / circumstances)</label><input type="text" id="mp-lastseen">
+        <label>Barangay</label><select id="mp-barangay"></select>
+        <label>Description</label><textarea id="mp-desc" placeholder="Clothing, distinguishing features..."></textarea>
+        <div class="form-row">
+          <div><label>Contact name</label><input type="text" id="mp-cname"></div>
+          <div><label>Contact phone</label><input type="text" id="mp-cphone"></div>
+        </div>
+        <label>Photo (optional)</label><input type="file" id="mp-photo" accept="image/*">
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('missing-create-modal')">Cancel</button>
+          <button type="submit" class="btn danger">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="contact-create-modal">
+    <div class="modal">
+      <h3>Add Emergency Contact</h3>
+      <form id="contact-create-form">
+        <label>Name</label><input type="text" id="ct-name" required>
+        <div class="form-row">
+          <div>
+            <label>Category</label>
+            <select id="ct-category">
+              <option value="police">Police</option><option value="fire">Fire</option>
+              <option value="ambulance">Ambulance</option><option value="mdrrmo">MDRRMO</option>
+              <option value="hospital">Hospital</option><option value="barangay">Barangay</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div><label>Phone / hotline</label><input type="text" id="ct-phone" required></div>
+        </div>
+        <label>Address</label><input type="text" id="ct-address">
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('contact-create-modal')">Cancel</button>
+          <button type="submit" class="btn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="road-create-modal">
+    <div class="modal">
+      <h3>Report Blocked Road</h3>
+      <form id="road-create-form">
+        <label>Road name</label><input type="text" id="rb-name" required maxlength="200">
+        <label>Barangay</label><select id="rb-barangay"></select>
+        <div class="form-row">
+          <div>
+            <label>Cause</label>
+            <select id="rb-cause">
+              <option value="">-- select --</option>
+              <option value="flood">Flood</option>
+              <option value="landslide">Landslide</option>
+              <option value="storm_damage">Storm damage</option>
+              <option value="accident">Accident</option>
+              <option value="debris">Debris</option>
+              <option value="construction">Construction</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Severity</label>
+            <select id="rb-severity">
+              <option value="moderate">Moderate</option>
+              <option value="high" selected>High</option>
+              <option value="critical">Critical</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div><label>Latitude</label><input type="number" step="any" id="rb-lat"></div>
+          <div><label>Longitude</label><input type="number" step="any" id="rb-lng"></div>
+        </div>
+        <label>&nbsp;</label>
+        <button type="button" class="btn secondary" id="rb-use-gps">Use My GPS Location</button>
+        <label>Description</label><textarea id="rb-desc" placeholder="Extent of blockage, detour advice..."></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('road-create-modal')">Cancel</button>
+          <button type="submit" class="btn danger">Report Blockage</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="official-create-modal">
+    <div class="modal">
+      <h3>Add Barangay Official</h3>
+      <form id="official-create-form">
+        <label>Barangay</label><select id="bo-barangay"></select>
+        <label>Full name</label><input type="text" id="bo-name" required maxlength="160">
+        <div class="form-row">
+          <div><label>Position</label><input type="text" id="bo-position" placeholder="e.g. Barangay Captain" maxlength="120"></div>
+          <div><label>Hotline / phone</label><input type="text" id="bo-phone" maxlength="30"></div>
+        </div>
+        <label>Sort order</label><input type="number" id="bo-sort" value="0">
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('official-create-modal')">Cancel</button>
+          <button type="submit" class="btn">Add Official</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="user-create-modal">
+    <div class="modal">
+      <h3>Create User Account</h3>
+      <form id="user-create-form">
+        <label>Full name</label><input type="text" id="us-name" required>
+        <label>Email</label><input type="email" id="us-email" required>
+        <label>Temporary password</label><input type="password" id="us-password" required minlength="8">
+        <div class="form-row">
+          <div>
+            <label>Role</label>
+            <select id="us-role">
+              <option value="resident">Resident</option>
+              <option value="responder">Responder</option>
+              <option value="barangay_official">Barangay Official</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </div>
+          <div><label>Barangay</label><select id="us-barangay"></select></div>
+        </div>
+        <label>Rescue team (for responders/officials - enables live tracking &amp; ETA)</label>
+        <select id="us-team"></select>
+        <label>Phone</label><input type="text" id="us-phone">
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('user-create-modal')">Cancel</button>
+          <button type="submit" class="btn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="user-edit-modal">
+    <div class="modal">
+      <h3>Edit User</h3>
+      <form id="user-edit-form">
+        <input type="hidden" id="ue-id">
+        <label>Full name</label><input type="text" id="ue-name">
+        <div class="form-row">
+          <div>
+            <label>Role</label>
+            <select id="ue-role">
+              <option value="resident">Resident</option>
+              <option value="responder">Responder</option>
+              <option value="barangay_official">Barangay Official</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </div>
+          <div><label>Barangay</label><select id="ue-barangay"></select></div>
+        </div>
+        <label>Rescue team (for responders/officials - enables live tracking &amp; ETA)</label>
+        <select id="ue-team"></select>
+        <label>New password (leave blank to keep)</label>
+        <input type="password" id="ue-password" minlength="8">
+        <label><input type="checkbox" id="ue-active" checked style="width:auto"> Account active</label>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('user-edit-modal')">Cancel</button>
+          <button type="submit" class="btn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Video call: active call surface (admin <-> responder) -->
+  <div class="modal-overlay" id="call-modal">
+    <div class="modal call-modal">
+      <div class="call-header">
+        <div>
+          <div id="call-peer" class="call-peer">Responder</div>
+          <div id="call-status" class="call-status">Connecting...</div>
+        </div>
+        <div id="call-timer" class="call-timer"></div>
+      </div>
+      <div class="call-stage">
+        <video id="call-remote-video" class="call-remote" autoplay playsinline></video>
+        <video id="call-local-video" class="call-local" autoplay playsinline muted></video>
+      </div>
+      <div class="call-controls">
+        <button type="button" class="btn secondary" id="call-mute-btn" onclick="toggleMute(this)">🎙 Mute</button>
+        <button type="button" class="btn secondary" id="call-cam-btn" onclick="toggleCamera(this)">📹 Camera on</button>
+        <button type="button" class="btn danger" id="call-end-btn" onclick="endCall()">✖ End call</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video call: incoming ring -->
+  <div class="modal-overlay" id="incoming-call-modal">
+    <div class="modal incoming-modal">
+      <div class="incoming-icon">📹</div>
+      <h3 id="incoming-call-name">Control room</h3>
+      <p class="muted" id="incoming-call-context">Incoming video call</p>
+      <div class="modal-actions">
+        <button type="button" class="btn danger" onclick="declineCall()">Decline</button>
+        <button type="button" class="btn success" onclick="acceptCall()">Accept</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/call.js"></script>
+</body>
+</html>

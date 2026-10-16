@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - MDAS</title>
+  <meta name="theme-color" content="#0b1c33">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site">
+    <div class="container header-flex">
+      <a class="logo" href="/" style="color:var(--text)">
+        <img src="/icons/icon-192.png" alt="MDAS logo">
+        <div>Municipality Disaster<br>Alert System</div>
+      </a>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:460px">
+    <div class="card">
+      <h2 id="form-title">Login</h2>
+
+      <form id="login-form">
+        <label>Email</label>
+        <input type="email" id="login-email" required autocomplete="email">
+        <label>Password</label>
+        <input type="password" id="login-password" required autocomplete="current-password">
+        <div class="modal-actions" style="justify-content:stretch">
+          <button type="submit" class="btn" style="flex:1">Login</button>
+        </div>
+        <p class="muted mt" style="text-align:center">
+          No account? <a href="#" id="show-register">Register as a resident</a>
+        </p>
+      </form>
+
+      <form id="register-form" class="hidden">
+        <label>Full name</label>
+        <input type="text" id="reg-name" required>
+        <label>Email</label>
+        <input type="email" id="reg-email" required autocomplete="email">
+        <label>Password (min. 8 characters)</label>
+        <input type="password" id="reg-password" required minlength="8" autocomplete="new-password">
+        <label>Phone (optional)</label>
+        <input type="text" id="reg-phone">
+        <label>Account type</label>
+        <select id="reg-role">
+          <option value="resident">Resident</option>
+          <option value="responder">Responder</option>
+        </select>
+        <label>Barangay</label>
+        <select id="reg-barangay"><option value="">-- Select barangay --</option></select>
+        <div class="modal-actions" style="justify-content:stretch">
+          <button type="submit" class="btn success" style="flex:1">Create Account</button>
+        </div>
+        <p class="muted mt" style="text-align:center">
+          Already registered? <a href="#" id="show-login">Login</a><br>
+          Barangay official / admin accounts are issued by the system administrator.
+        </p>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/login.js"></script>
+</body>
+</html>

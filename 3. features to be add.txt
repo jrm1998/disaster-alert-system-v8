@@ -1,0 +1,24 @@
+Nice features to add
+1. Responder, and barangay official account, there gps is always turn on, when there is an accident 
+they will notify and they will know the exact location of incident happen.
+
+2.When the resident account reported an incident and admin verified the incident report.
+The resident will know the estimate time the arrival of responder or rescue team 
+he/she will see a small maps where he/she see the responder location moving to the incident scene.
+
+2. In the incident details a google map will display and pin the incident area. It will also display the 
+all responders locations and the top 3 near responder to the scene it will display all  button 
+to their number so that they will be contact by administrator. And the administrator also be inform
+who responders in the scene aside from rescue team.
+
+4. continue, in the official advisory make a daily report of typhoon signals, earthquake updates, 
+rainfall warnings, flood alerts and storm surges in philippines  
+like typhoon. In the view of resident in missing person display the picture of the mission person. 
+Fix the AI Disaster Assitant. Send alerts to all residents or selected barangays only. In the interactive
+ Disaster map include blocked roads. Residents from barangay can see their own barangay
+ officials and with there corresponding hotline number. Estimate arrival time of responder
+ and rescue team to incident scence, and resident can view the 
+assigned responder's and rescue team movement and status. Notify other nearby responders when additional assistance is needed.
+Detect reports with similar locations, times and incident types so the control room can consolidate duplicate 
+reports without losing their original evidence.
+public/icons

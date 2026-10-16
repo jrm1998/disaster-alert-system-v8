@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MDAS - Municipality Disaster Alert System</title>
+  <meta name="description" content="Real-time disaster alerts, interactive hazard map, incident reporting and emergency information for the municipality.">
+  <meta name="theme-color" content="#0b1c33">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="offline-tag">You are offline - showing last known emergency information</div>
+
+  <div id="critical-banner" class="banner-critical hidden"></div>
+
+  <header class="site">
+    <div class="container header-flex">
+      <div class="logo">
+        <img src="/icons/icon-192.png" alt="MDAS logo" data-brand-logo>
+        <div data-brand-name>Municipality Disaster<br>Alert System</div>
+      </div>
+      <nav class="header-nav" data-auth-area></nav>
+      <button class="btn success sm install-btn">Install App</button>
+      <button class="btn warning sm" id="enable-push-btn" title="Receive alerts even when this site is closed">Enable Alerts</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid cols-2" style="grid-template-columns: 1.4fr 1fr;">
+      <!-- Interactive Map -->
+      <div class="card">
+        <h2>Interactive Disaster Map <span class="sub">hazards &bull; incidents &bull; evacuation centers &bull; flood sensors</span></h2>
+        <div id="map"></div>
+        <div class="map-legend">
+          <span><span class="legend-dot" style="background:#e63946"></span>Incident (open)</span>
+          <span><span class="legend-dot" style="background:#2ecc71"></span>Evacuation center</span>
+          <span><span class="legend-dot" style="background:#3d8bfd"></span>Flood sensor</span>
+          <span><span class="legend-dot" style="background:#ff9f1c"></span>Geofenced alert</span>
+          <span><span class="legend-dot" style="background:#9b59b6"></span>Barangay (risk color)</span>
+          <span>🚧 Blocked / impassable road</span>
+        </div>
+        <div class="section-actions mt">
+          <button class="btn" id="report-incident-btn">Report an Incident</button>
+          <span class="muted" id="report-hint"></span>
+        </div>
+      </div>
+
+      <!-- Weather -->
+      <div class="card">
+        <h2>Weather Monitoring</h2>
+        <div id="weather-area"><p class="empty">Loading weather...</p></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2 mt" style="grid-template-columns: 1fr 1fr;">
+      <!-- Alerts feed -->
+      <div class="card">
+        <h2>Emergency Alerts</h2>
+        <div id="alerts-feed"><p class="empty">No active alerts.</p></div>
+      </div>
+
+      <!-- Emergency contacts -->
+      <div class="card">
+        <h2>Emergency Contacts <span class="sub">available offline</span></h2>
+        <div id="contacts-area"><p class="empty">Loading...</p></div>
+      </div>
+    </div>
+
+    <!-- My barangay officials + hotlines (residents) -->
+    <div class="card mt hidden" id="officials-card">
+      <h2>My Barangay Officials <span class="sub">direct hotlines</span></h2>
+      <div id="officials-area"><p class="empty">Loading...</p></div>
+    </div>
+
+    <!-- Official disaster advisories -->
+    <div class="card mt">
+      <h2>Official Disaster Advisories <span class="sub">PAGASA &bull; PHIVOLCS &bull; NDRRMC &bull; DENR</span></h2>
+      <div id="advisories-area"><p class="empty">Loading advisories...</p></div>
+    </div>
+
+    <div class="grid cols-2 mt">
+      <!-- Evacuation centers -->
+      <div class="card">
+        <h2>Evacuation Centers</h2>
+        <div id="evac-area" class="table-wrap"><p class="empty">Loading...</p></div>
+      </div>
+
+      <!-- Missing persons -->
+      <div class="card">
+        <h2>Missing Persons</h2>
+        <div id="missing-area"><p class="empty">Loading...</p></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2 mt">
+      <!-- AI assistant -->
+      <div class="card">
+        <h2>AI Disaster Assistant <span class="sub">preparedness guidance</span></h2>
+        <div class="chat-box">
+          <div class="chat-log" id="chat-log">
+            <div class="chat-msg bot">Hello! I'm your disaster preparedness assistant. Ask me things like "What should I do before a flood?", "What's in a go-bag?", or "How do I report an incident?"</div>
+          </div>
+          <div class="chat-input">
+            <input type="text" id="chat-input" placeholder="Ask about disaster preparedness..." autocomplete="off">
+            <button class="btn" id="chat-send">Ask</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barangay risk dashboard (public summary) -->
+      <div class="card">
+        <h2>Disaster Risk Dashboard <span class="sub">by barangay</span></h2>
+        <div id="risk-area"><p class="empty">Loading...</p></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Report incident modal -->
+  <div class="modal-overlay" id="incident-modal">
+    <div class="modal">
+      <h3>Report an Incident</h3>
+      <form id="incident-form">
+        <label>Incident type</label>
+        <select id="inc-type">
+          <option value="fire">Fire</option>
+          <option value="flood">Flood</option>
+          <option value="landslide">Landslide</option>
+          <option value="medical">Medical emergency</option>
+          <option value="accident">Accident</option>
+          <option value="storm_damage">Storm damage</option>
+          <option value="earthquake">Earthquake</option>
+          <option value="other">Other</option>
+        </select>
+        <label>What happened?</label>
+        <textarea id="inc-desc" required placeholder="Describe the emergency..."></textarea>
+        <label>Severity</label>
+        <select id="inc-severity">
+          <option value="">Auto (based on type)</option>
+          <option value="low">Low</option>
+          <option value="moderate">Moderate</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+        <div class="form-row">
+          <div>
+            <label>Location</label>
+            <input type="text" id="inc-address" placeholder="Street / landmark">
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button type="button" class="btn secondary" id="use-gps">Use My GPS Location</button>
+          </div>
+        </div>
+        <input type="hidden" id="inc-lat"><input type="hidden" id="inc-lng">
+        <label>Photo (optional)</label>
+        <input type="file" id="inc-photo" accept="image/*">
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" onclick="closeModal('incident-modal')">Cancel</button>
+          <button type="submit" class="btn danger">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site">
+    <div class="container">
+      Municipality Disaster Alert System &mdash; In life-threatening emergencies, always call the hotlines above first.<br>
+      Installable on your phone &bull; Works offline for emergency info
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/index.js"></script>
+</body>
+</html>

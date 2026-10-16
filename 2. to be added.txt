@@ -1,0 +1,3 @@
+features to be added
+1. DUring registration of resident , if the resident is barangay official and someday
+he/she will witness accident no need to verify the report, the admin will dispatch responder
